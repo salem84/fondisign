@@ -66,4 +66,4 @@ jobs:
         with:
           app-name: 'fondisign'
           slot-name: 'Production'
-          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_DB10EBEE60014741855E45071EF1DF13 }}
+          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_AC9D4EBA2A8B4A59B00EE86A34B65394 }}
