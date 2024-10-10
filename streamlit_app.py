@@ -11,6 +11,61 @@ from azure.keyvault.secrets import SecretClient
 from azure.keyvault.keys import KeyClient
 from azure.keyvault.keys.crypto import CryptographyClient, SignatureAlgorithm
 
+class Config:
+    @property
+    def tenant_id(self):
+        tenant_id = self.read_from_env_or_secrets('AZURE_TENANT_ID')       
+        os.environ['AZURE_TENANT_ID'] = tenant_id
+        # Restituisce il tenant_id, o None se non esiste
+        return tenant_id
+
+    @property
+    def client_id(self):
+        client_id = self.read_from_env_or_secrets('AZURE_CLIENT_ID')
+        os.environ['AZURE_CLIENT_ID'] = client_id
+        return client_id
+    
+    @property
+    def client_secret(self):
+        client_secret = self.read_from_env_or_secrets('AZURE_CLIENT_SECRET')
+        os.environ['AZURE_CLIENT_SECRET'] = client_secret
+        return client_secret
+
+    @property
+    def azkeyvault_name(self):
+        azkeyvault_name = self.read_from_env_or_secrets('AZKEYVAULT_NAME')
+        return azkeyvault_name
+
+    @property
+    def azkeyvault_key_name(self):
+        azkeyvault_key_name = self.read_from_env_or_secrets('AZKEYVAULT_KEY_NAME')
+        return azkeyvault_key_name
+
+    def read_from_env_or_secrets(self, key):
+        value = os.getenv(key)
+        if value is None:
+            try:
+                value = st.secrets[key]
+            except FileNotFoundError:
+                print(f'File secrets.toml non esistente')
+                value = None
+            except KeyError:
+                print(f"La variabile {key} non è stata trovata né nelle variabili d'ambiente né nei secrets di Streamlit.")
+                value = None
+        return value
+
+    def check(self):
+        if self.tenant_id is None:
+            raise ValueError("Il tenant_id non è stato configurato.")
+        if self.client_id is None:
+            raise ValueError("Il client_id non è stato configurato.")
+        if self.client_secret is None:
+            raise ValueError("Il client_secret non è stato configurato.")
+        if self.azkeyvault_name is None:
+            raise ValueError("Il nome del Key Vault non è stato configurato.")
+        if self.azkeyvault_key_name is None:
+            raise ValueError("Il nome della chiave nel Key Vault non è stato configurato.")
+
 # ----- FUNZIONI ----- #
 def hash_file(file):
     """Genera l'hash SHA-256 del file caricato."""
@@ -24,8 +79,8 @@ def sign_hash_with_private_key(hash_value):
     # Autenticazione tramite DefaultAzureCredential (usa Managed Identity, environment variables, ecc.)
     credential = DefaultAzureCredential()
 
-    key_vault_name = st.secrets["AZKEYVAULT_NAME"]
-    key_name = st.secrets["AZKEYVAULT_KEY_NAME"]
+    key_vault_name = config.azkeyvault_name
+    key_name = config.azkeyvault_key_name
     
     # URL del Key Vault
     kv_url = f"https://{key_vault_name}.vault.azure.net"
@@ -51,8 +106,8 @@ def verify_signature(original_hash, signature):
     # Autenticazione tramite DefaultAzureCredential (usa Managed Identity, environment variables, ecc.)
     credential = DefaultAzureCredential()
 
-    key_vault_name = st.secrets["AZKEYVAULT_NAME"]
-    key_name = st.secrets["AZKEYVAULT_KEY_NAME"]
+    key_vault_name = config.azkeyvault_name
+    key_name = config.azkeyvault_key_name
 
     # URL del Key Vault
     kv_url = f"https://{key_vault_name}.vault.azure.net"
@@ -75,9 +130,9 @@ def verify_signature(original_hash, signature):
 #----- INTERFACCIA STREAMLIT -----#
 #---------------------------------#
 
-os.environ["AZURE_TENANT_ID"] = st.secrets["AZURE_TENANT_ID"]
-os.environ["AZURE_CLIENT_ID"] = st.secrets["AZURE_CLIENT_ID"]
-os.environ["AZURE_CLIENT_SECRET"] = st.secrets["AZURE_CLIENT_SECRET"]
+# Verifica configurazione
+config = Config()
+config.check()
 
 st.title("Fondi Signature🔐")
 
